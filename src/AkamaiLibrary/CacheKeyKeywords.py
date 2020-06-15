@@ -117,6 +117,7 @@ class CacheKeyKeywords(*_base_classes):
     - ``[#Get Cache Key TTL|Get Cache Key TTL]``
     - ``[#Get Cache Key Hostname|Get Cache Key Hostname]``
     - ``[#Get Cache Key Path|Get Cache Key Path]``
+    - ``[#Get Cache Id|Get Cache Id]``
 
     === Comparisons ===
 
