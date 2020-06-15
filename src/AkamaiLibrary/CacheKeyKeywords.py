@@ -2,8 +2,6 @@ from robot.libraries.BuiltIn import BuiltIn
 from robot.api.deco import not_keyword
 from .builtinMethods import builtin_method_names
 
-_components = ("", "serial", "typecode", "cpcode", "ttl", "hostname", "path")
-
 class CacheKeyBase:
     def get_cache_key(self, resp):
         """
@@ -50,23 +48,50 @@ class CacheKeyBase:
         ck = self.get_cache_key(resp)
         return "/" + "/".join(ck.split("/")[6:])
 
-def CacheKeyComponentKeywords(component):
-    builtIn = BuiltIn()
-    # get_comp: helper to return the component by name
-    get_comp = lambda self, resp: getattr(self, "get_cache_key_%s" % component)(resp)
+    def get_cache_id(self, resp):
+        """
+        Returns the contents of the Flexible Cache Id, depending
+        on the scenario:
 
+        | **Scenario**                   | **Return value**  |
+        | Enabled, ``?lang`` in cache id | "lang=eng-us"     |
+        | Enabled, nothing in cache id   | "__"              |
+        | Disabled                       | None              |
+        """
+        try:
+            ck = self.get_cache_key(resp)
+            cid = next((cmp for cmp in ck.split(" ") if cmp.startswith("cid=")))
+            cid = cid[4:] # remove the 'cid=' prefix
+            return cid
+        except:
+            return None # default value for the 'cid='
+
+_components = (
+    # (component name, accessor, prefix)
+    ("", CacheKeyBase.get_cache_key, "cache_key"),
+    ("serial", CacheKeyBase.get_cache_key_serial, "cache_key_serial"),
+    ("typecode", CacheKeyBase.get_cache_key_typecode, "cache_key_typecode"),
+    ("cpcode", CacheKeyBase.get_cache_key_cpcode, "cache_key_cpcode"),
+    ("ttl", CacheKeyBase.get_cache_key_ttl, "cache_key_ttl"),
+    ("hostname", CacheKeyBase.get_cache_key_hostname, "cache_key_hostname"),
+    ("path", CacheKeyBase.get_cache_key_path, "cache_key_path"),
+    ("cache_id", CacheKeyBase.get_cache_id, "cache_id")
+)
+
+def CacheKeyComponentKeywords(component, accessor, prefix):
+    builtIn = BuiltIn()
     # given a BuiltIn method name, returns a name value tuple specializing it
     # for this component of the cache key, e.g.:
     # ("cpcode_should_be_equal", <implementation>)
     def create_method(name):
         builtInImpl = getattr(builtIn, name)
-        impl = lambda self, resp, expected, *args, **kwargs: builtInImpl(get_comp(self, resp), expected, *args, **kwargs)
+        impl = lambda self, resp, expected, *args, **kwargs: builtInImpl(accessor(self, resp), expected, *args, **kwargs)
         impl.__doc__ = """
         Extracts the %s component of the cache key from the response ``${resp}`` applies the ``%s`` comparison from BuiltIns.
       
         %s
-        """ % (component.replace("_", " "), name.replace("_", " "), getattr(builtIn, name).__doc__)
-        return ("cache_key_%s_%s" % (component, name), impl)
+        """ % (component.replace("_", " ").title(), name.replace("_", " ").title(), builtInImpl.__doc__)
+        return ("%s_%s" % (prefix, name), impl)
 
     return type(
         "CacheKey_%s" % component,
@@ -77,7 +102,7 @@ def CacheKeyComponentKeywords(component):
         ))
     )
 
-_base_classes = (CacheKeyComponentKeywords(component) for component in _components)
+_base_classes = (CacheKeyComponentKeywords(*component) for component in _components)
 
 class CacheKeyKeywords(*_base_classes):
     __doc__ = """
