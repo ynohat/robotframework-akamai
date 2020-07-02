@@ -1,17 +1,14 @@
 from RequestsLibrary import RequestsLibrary
 from .pragmas import DEFAULT_PRAGMAS
-
-# Avoid Python http error when response contains more than 100 headers.
-# This is common when using Pragma: akamai-x-get-extracted-values.
-import http.client as httplib
-httplib._MAXHEADERS = 10000
+from robot.libraries.BuiltIn import BuiltIn
+from .builtinMethods import builtin_method_names
 
 class RequestsKeywords(RequestsLibrary):
-    """
+    __doc__ = """
     Extends the RequestsLibrary, making all of its keywords available without needing to
     import them explicitly. Their functionality is unchanged.
 
-    Additionally, provides the following convenience keywords:
+    The following are added for convenience:
 
     - ``[#Set Session Pragma Header|Set Session Pragma Header]``
     - ``[#Set Session Header|Set Session Header]``
@@ -45,16 +42,22 @@ class RequestsKeywords(RequestsLibrary):
         Examples:
         | Set Session Cookie | session | SESSIONID | xyz |
         """
-        self.update_session(session, cookies={name: value})
+        if value is None:
+            self.unset_session_cookie(session, name)
+        else:
+            self.update_session(session, cookies={name: value})
 
     def unset_session_cookie(self, session, name):
         """
         Removes a cookie from all subsequent requests made over the session.
 
         Examples:
-        | Set Session Cookie | session | SESSIONID |
+        | Unset Session Cookie | session | SESSIONID |
         """
-        self.set_session_cookie(session, name, None)
+        session = self._cache.switch(session)
+        for cookie_in_jar in session.cookies:
+            if cookie_in_jar.name == name:
+                session.cookies.clear(cookie_in_jar.domain, cookie_in_jar.path, cookie_in_jar.name)
 
     def set_session_pragma_header(self, session, *pragmas):
         """
@@ -72,3 +75,29 @@ class RequestsKeywords(RequestsLibrary):
         if len(pragmas) == 0:
             pragmas = DEFAULT_PRAGMAS
         self.set_session_header(session, "pragma", ",".join(pragmas))
+
+    def log_headers(self, resp):
+        return BuiltIn().log("\n".join(
+            "%s: %s" % (k, v)
+            for (k, v) in resp.headers.items()
+        ))
+
+_builtIn = BuiltIn()
+def _create_header_keyword(method):
+    _impl = getattr(_builtIn, method)
+    impl = lambda self, resp, hdr, expected, *args, **kwargs: _impl(resp.headers.get(hdr, None), expected, *args, **kwargs)
+    impl.__doc__ = """
+    Extracts a response header from ``${resp}`` and applies the ``%s`` comparison from BuiltIns.
+
+    %s
+    """ % (method.replace("_", " ").title(), _impl.__doc__)
+    return impl
+
+for method in builtin_method_names:
+    name = "header_%s" % method
+    pretty_name = name.replace("_", " ").title()
+    RequestsKeywords.__doc__ += "    - ``[#%s|%s]``\n" % (
+        pretty_name,
+        pretty_name
+    )
+    setattr(RequestsKeywords, name, _create_header_keyword(method))

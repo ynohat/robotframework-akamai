@@ -3,6 +3,10 @@ from .CacheKeyKeywords import CacheKeyKeywords
 from .ExtractedValuesKeywords import ExtractedValuesKeywords
 from .version import VERSION
 
+# Avoid Python http error when response contains more than 100 headers.
+# This is common when using Pragma: akamai-x-get-extracted-values.
+import http.client as httplib
+httplib._MAXHEADERS = 10000
 
 class AkamaiLibrary(RequestsKeywords,
                     ExtractedValuesKeywords,
