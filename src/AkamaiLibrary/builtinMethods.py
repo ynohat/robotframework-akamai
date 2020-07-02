@@ -13,4 +13,8 @@ builtin_method_names = (
     "should_not_contain",
     "should_contain_any",
     "should_not_contain_any",
+    "should_start_with",
+    "should_not_start_with",
+    "should_end_with",
+    "should_not_end_with",
 )
