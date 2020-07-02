@@ -2,7 +2,38 @@ from robot.libraries.BuiltIn import BuiltIn
 from robot.api.deco import not_keyword
 from .builtinMethods import builtin_method_names
 
-class CacheKeyBase:
+class CacheKeyKeywords:
+    __doc__ = """
+    Convenience keywords for testing the value of the ``x-cache-key`` header.
+
+    === Accessors ===
+
+    - ``[#Get Cache Key|Get Cache Key]``
+    - ``[#Get Cache Key Serial|Get Cache Key Serial]``
+    - ``[#Get Cache Key Typecode|Get Cache Key Typecode]``
+    - ``[#Get Cache Key CPCode|Get Cache Key CPCode]``
+    - ``[#Get Cache Key TTL|Get Cache Key TTL]``
+    - ``[#Get Cache Key Hostname|Get Cache Key Hostname]``
+    - ``[#Get Cache Key Path|Get Cache Key Path]``
+    - ``[#Get Cache Id|Get Cache Id]``
+
+    === Comparisons ===
+
+    For the cache key, or for any of the components, provides keywords for
+    comparing them to other values. These extract the component from the cache
+    key, and apply the corresponding [https://robotframework.org/robotframework/latest/libraries/BuiltIn.html|BuiltIn] keyword.
+
+    The full list of comparisons implemented is:
+
+    - {Comparisons}
+
+    Examples:
+    | Cache Key CPCode Should Be | ${{resp}} | 123456 |
+    | Cache Key Path Should Match | ${{resp}} | /assets/* |
+    | Cache Key Hostname Should Match Regexp | ${{resp}} | [^.]\.acme\.org |
+
+    """.format(Comparisons="\n- ".join(list(("Cache Key <Component> %s" % meth.replace("_", " ")).title() for meth in builtin_method_names)))
+
     def get_cache_key(self, resp):
         """
         Retrieves the value of the X-Cache-Key header from the response.
@@ -60,78 +91,36 @@ class CacheKeyBase:
         """
         try:
             ck = self.get_cache_key(resp)
-            cid = next((cmp for cmp in ck.split(" ") if cmp.startswith("cid=")))
-            cid = cid[4:] # remove the 'cid=' prefix
-            return cid
+            if "cid=" in ck:
+                return ck.split("cid=")[1]
+            return None
         except:
             return None # default value for the 'cid='
 
 _components = (
     # (component name, accessor, prefix)
-    ("", CacheKeyBase.get_cache_key, "cache_key"),
-    ("serial", CacheKeyBase.get_cache_key_serial, "cache_key_serial"),
-    ("typecode", CacheKeyBase.get_cache_key_typecode, "cache_key_typecode"),
-    ("cpcode", CacheKeyBase.get_cache_key_cpcode, "cache_key_cpcode"),
-    ("ttl", CacheKeyBase.get_cache_key_ttl, "cache_key_ttl"),
-    ("hostname", CacheKeyBase.get_cache_key_hostname, "cache_key_hostname"),
-    ("path", CacheKeyBase.get_cache_key_path, "cache_key_path"),
-    ("cache_id", CacheKeyBase.get_cache_id, "cache_id")
+    ("", CacheKeyKeywords.get_cache_key, "cache_key"),
+    ("serial", CacheKeyKeywords.get_cache_key_serial, "cache_key_serial"),
+    ("typecode", CacheKeyKeywords.get_cache_key_typecode, "cache_key_typecode"),
+    ("cpcode", CacheKeyKeywords.get_cache_key_cpcode, "cache_key_cpcode"),
+    ("ttl", CacheKeyKeywords.get_cache_key_ttl, "cache_key_ttl"),
+    ("hostname", CacheKeyKeywords.get_cache_key_hostname, "cache_key_hostname"),
+    ("path", CacheKeyKeywords.get_cache_key_path, "cache_key_path"),
+    ("cache_id", CacheKeyKeywords.get_cache_id, "cache_id")
 )
 
-def CacheKeyComponentKeywords(component, accessor, prefix):
-    builtIn = BuiltIn()
-    # given a BuiltIn method name, returns a name value tuple specializing it
-    # for this component of the cache key, e.g.:
-    # ("cpcode_should_be_equal", <implementation>)
-    def create_method(name):
-        builtInImpl = getattr(builtIn, name)
-        impl = lambda self, resp, expected, *args, **kwargs: builtInImpl(accessor(self, resp), expected, *args, **kwargs)
-        impl.__doc__ = """
-        Extracts the %s component of the cache key from the response ``${resp}`` applies the ``%s`` comparison from BuiltIns.
-      
-        %s
-        """ % (component.replace("_", " ").title(), name.replace("_", " ").title(), builtInImpl.__doc__)
-        return ("%s_%s" % (prefix, name), impl)
+_builtIn = BuiltIn()
+def _create_cache_key_component_keyword(component, accessor, kw):
+    _impl = getattr(_builtIn, kw)
+    impl = lambda self, resp, expected, *args, **kwargs: _impl(accessor(self, resp), expected, *args, **kwargs)
+    impl.__doc__ = """
+    Extracts the %s component of the cache key from the response ``${resp}`` applies the ``%s`` comparison from BuiltIns.
+    
+    %s
+    """ % (component.replace("_", " ").title(), kw.replace("_", " ").title(), _impl.__doc__)
+    return impl
 
-    return type(
-        "CacheKey_%s" % component,
-        (CacheKeyBase,),
-        dict((
-            create_method(method)
-            for method in builtin_method_names
-        ))
-    )
-
-_base_classes = (CacheKeyComponentKeywords(*component) for component in _components)
-
-class CacheKeyKeywords(*_base_classes):
-    __doc__ = """
-    Convenience keywords for testing the value of the ``x-cache-key`` header.
-
-    === Accessors ===
-
-    - ``[#Get Cache Key|Get Cache Key]``
-    - ``[#Get Cache Key Serial|Get Cache Key Serial]``
-    - ``[#Get Cache Key Typecode|Get Cache Key Typecode]``
-    - ``[#Get Cache Key CPCode|Get Cache Key CPCode]``
-    - ``[#Get Cache Key TTL|Get Cache Key TTL]``
-    - ``[#Get Cache Key Hostname|Get Cache Key Hostname]``
-    - ``[#Get Cache Key Path|Get Cache Key Path]``
-    - ``[#Get Cache Id|Get Cache Id]``
-
-    === Comparisons ===
-
-    For the cache key, or for any of the components, provides keywords for
-    comparing them to other values. These extract the component from the cache
-    key, and apply the corresponding [https://robotframework.org/robotframework/latest/libraries/BuiltIn.html|BuiltIn] keyword.
-
-    The full list of comparisons implemented is:
-
-    - {Comparisons}
-
-    Examples:
-    | Cache Key CPCode Should Be | ${{resp}} | 123456 |
-    | Cache Key Path Should Match | ${{resp}} | /assets/* |
-    | Cache Key Hostname Should Match Regexp | ${{resp}} | [^.]\.acme\.org |
-
-    """.format(Comparisons="\n- ".join(list(("Cache Key <Component> %s" % meth.replace("_", " ")).title() for meth in builtin_method_names)))
+for (component, accessor, prefix) in _components:
+    for kw in builtin_method_names:
+        real_kw = _create_cache_key_component_keyword(component, accessor, kw)
+        setattr(CacheKeyKeywords, "%s_%s" % (prefix, kw), real_kw)
