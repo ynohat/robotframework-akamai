@@ -6,7 +6,10 @@ from .builtinMethods import builtin_method_names
 class RequestsKeywords(RequestsLibrary):
     __doc__ = """
     Extends the RequestsLibrary, making all of its keywords available without needing to
-    import them explicitly. Their functionality is unchanged.
+    import them explicitly.
+    
+    Their functionality is unchanged, except that the ``allow_redirects`` parameter for
+    the request keywords is ``False`` by default. 
 
     The following are added for convenience:
 
@@ -16,6 +19,21 @@ class RequestsKeywords(RequestsLibrary):
     - ``[#Set Session Cookie|Set Session Cookie]``
     - ``[#Unset Session Cookie|Unset Session Cookie]``
     """
+
+    def get_request(self, alias, uri, headers=None, data=None, json=None, params=None, allow_redirects=False, timeout=None):
+        return super().get_request(alias, uri, headers, data, json, params, allow_redirects, timeout)
+    def post_request(self, alias, uri, headers=None, data=None, json=None, params=None, allow_redirects=False, timeout=None):
+        return super().post_request(alias, uri, headers, data, json, params, allow_redirects, timeout)
+    def put_request(self, alias, uri, headers=None, data=None, json=None, params=None, allow_redirects=False, timeout=None):
+        return super().put_request(alias, uri, headers, data, json, params, allow_redirects, timeout)
+    def patch_request(self, alias, uri, headers=None, data=None, json=None, params=None, allow_redirects=False, timeout=None):
+        return super().patch_request(alias, uri, headers, data, json, params, allow_redirects, timeout)
+    def delete_request(self, alias, uri, headers=None, data=None, json=None, params=None, allow_redirects=False, timeout=None):
+        return super().delete_request(alias, uri, headers, data, json, params, allow_redirects, timeout)
+    def options_request(self, alias, uri, headers=None, allow_redirects=False, timeout=None):
+        return super().options_request(alias, uri, headers, allow_redirects, timeout)
+    def head_request(self, alias, uri, headers=None, allow_redirects=False, timeout=None):
+        return super().head_request(alias, uri, headers, allow_redirects, timeout)
 
     def set_session_header(self, session, name, value):
         """
