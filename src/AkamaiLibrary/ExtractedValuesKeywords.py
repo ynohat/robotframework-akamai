@@ -49,15 +49,15 @@ class ExtractedValuesKeywords:
 # given a BuiltIn method name, returns a name value tuple specializing it
 # for this component of the cache key, e.g.:
 # ("cpcode_should_be_equal", <implementation>)
+_builtIn = BuiltIn()
 def _create_method(name):
-    builtIn = BuiltIn()
-    builtInImpl = getattr(builtIn, name)
-    impl = lambda self, resp, name, expected, *args, **kwargs: builtInImpl(self.get_extracted_value(resp, name), expected, *args, **kwargs)
+    _impl = getattr(_builtIn, name)
+    impl = lambda self, resp, name, expected, *args, **kwargs: _impl(self.get_extracted_value(resp, name), expected, *args, **kwargs)
     impl.__doc__ = """
     Extracts the value from the response ``${resp}`` and applies the ``%s`` comparison from BuiltIns.
     
     %s
-    """ % (name.replace("_", " "), getattr(builtIn, name).__doc__)
+    """ % (name.replace("_", " "), _impl.__doc__)
     return ("extracted_value_%s" % (name), impl)
 
 for builtin_method_name in builtin_method_names:
